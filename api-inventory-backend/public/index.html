@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Scanner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input[type="text"],
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #0fc6c2;
+            color: #fff;
+            border: none;
+        }
+
+        button:hover {
+            background-color: #0fc6c2;
+        }
+
+        #progress {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        #report-links {
+            margin-top: 20px;
+            display: none;
+        }
+
+        a {
+            display: block;
+            margin: 5px 0;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>ZAP Scanner</h1>
+        <input type="text" id="url" placeholder="Enter URL here" />
+        <button id="scanButton">Start Scan</button>
+        <div id="progress"></div>
+        <div id="report-links">
+            <a id="htmlReportLink" href="#" download="zap_report.html">Download HTML Report</a>
+            <a id="jsonReportLink" href="#" download="zap_report.json">Download JSON Report</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('scanButton').addEventListener('click', async () => {
+            const url = document.getElementById('url').value;
+            if (!url) {
+                alert('Please enter a URL');
+                return;
+            }
+
+            document.getElementById('progress').innerText = 'Starting scan...';
+
+            try {
+                const response = await fetch(`/start-scan?url=${encodeURIComponent(url)}`);
+                const result = await response.json();
+
+                if (result.error) {
+                    alert('Error starting scan: ' + result.error);
+                    document.getElementById('progress').innerText = '';
+                    return;
+                }
+
+                const scanId = result.scanId;
+
+                let scanCompleted = false;
+                while (!scanCompleted) {
+                    const statusResponse = await fetch(`/check-scan-status?scanId=${scanId}`);
+                    const statusResult = await statusResponse.json();
+
+                    document.getElementById('progress').innerText = `Scan progress: ${statusResult.status}%`;
+
+                    if (statusResult.status === 100) {
+                        scanCompleted = true;
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                    }
+                }
+
+                document.getElementById('progress').innerText = 'Scan completed!';
+
+                document.getElementById('report-links').style.display = 'block';
+                document.getElementById('htmlReportLink').href = `/generate-report?format=html`;
+                document.getElementById('jsonReportLink').href = `/generate-report?format=json`;
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred');
+                document.getElementById('progress').innerText = '';
+            }
+        });
+    </script>
+</body>
+
+</html>
